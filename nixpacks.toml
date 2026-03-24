@@ -1,0 +1,7 @@
+# Nixpacks/Easypanel: variáveis para npm ci mais tolerante a rede instável (evitar ETIMEDOUT)
+[variables]
+NPM_CONFIG_FETCH_TIMEOUT = "900000"
+NPM_CONFIG_FETCH_RETRIES = "15"
+NPM_CONFIG_FETCH_RETRY_MINTIMEOUT = "60000"
+NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT = "300000"
+NPM_CONFIG_MAXSOCKETS = "2"
