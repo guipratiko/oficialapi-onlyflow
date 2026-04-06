@@ -443,14 +443,40 @@ export async function uploadProfilePictureToMeta(
   return handle;
 }
 
-export function isMetaAPIError(error: unknown): error is AxiosError<{ error?: { message?: string; code?: number } }> {
+type MetaErrorBody = {
+  error?: { message?: string; type?: string; code?: number; error_subcode?: number; fbtrace_id?: string };
+};
+
+export function isMetaAPIError(error: unknown): error is AxiosError<MetaErrorBody> {
   return axios.isAxiosError(error);
 }
 
+const META_PROFILE_PERMISSION_HINT_PT =
+  ' Verifique no Meta Developers: permissão whatsapp_business_management com Advanced Access; System User com papel na WABA (ex.: Admin); token gerado para esse app e com escopos corretos. Tokens só de mensagens (whatsapp_business_messaging) não editam perfil.';
+
 export function getMetaErrorMessage(error: unknown): string {
-  if (isMetaAPIError(error) && error.response?.data?.error?.message) {
-    return error.response.data.error.message;
+  if (!isMetaAPIError(error)) {
+    if (error instanceof Error) return error.message;
+    return String(error);
   }
+
+  const res = error.response;
+  const body = res?.data as MetaErrorBody | undefined;
+  const errObj = body?.error;
+  const msg = errObj?.message || error.message;
+  const wwwAuth = res?.headers?.['www-authenticate'];
+  const wwwAuthStr = typeof wwwAuth === 'string' ? wwwAuth : Array.isArray(wwwAuth) ? wwwAuth.join(' ') : '';
+
+  const insufficientScope =
+    wwwAuthStr.includes('insufficient_scope') ||
+    /permission|permissions error|insufficient/i.test(msg || '') ||
+    (errObj?.code === 200 && /permission/i.test(msg || ''));
+
+  if (insufficientScope) {
+    return (msg || 'Permissão insuficiente na Meta (OAuth).') + META_PROFILE_PERMISSION_HINT_PT;
+  }
+
+  if (errObj?.message) return errObj.message;
   if (error instanceof Error) return error.message;
   return String(error);
 }

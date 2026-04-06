@@ -12,9 +12,13 @@ export const SERVER_CONFIG = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
 };
 
+const graphVersionRaw = (process.env.META_GRAPH_API_VERSION || 'v25.0').trim();
+const graphVersion = graphVersionRaw.startsWith('v') ? graphVersionRaw : `v${graphVersionRaw}`;
+
 export const META_CONFIG = {
   ACCESS_TOKEN: process.env.META_SYSTEM_USER_TOKEN || '',
-  GRAPH_API_BASE: 'https://graph.facebook.com/v21.0',
+  /** v21+ depreciadas pela Meta; padrão v25. Sobrescreva com META_GRAPH_API_VERSION=v26.0 se precisar */
+  GRAPH_API_BASE: `https://graph.facebook.com/${graphVersion}`,
   /** App ID da Meta (necessário para Resumable Upload da foto de perfil). */
   APP_ID: process.env.META_APP_ID || '',
 };
