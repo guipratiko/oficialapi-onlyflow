@@ -12,6 +12,13 @@ import {
   UpdateWhatsAppBusinessProfileBody,
 } from '../services/metaGraphAPI';
 
+/** Token OAuth da instância (Embedded Signup); evita insufficient_scope do só System User no perfil. */
+function accessTokenFromReq(req: Request): string | undefined {
+  const raw = req.headers['x-meta-access-token'];
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  return undefined;
+}
+
 /**
  * GET /phone/:phone_number_id/profile
  */
@@ -22,7 +29,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
       res.status(400).json({ status: 'error', message: 'phone_number_id é obrigatório' });
       return;
     }
-    const profile = await getWhatsAppBusinessProfile(phoneNumberId);
+    const profile = await getWhatsAppBusinessProfile(phoneNumberId, accessTokenFromReq(req));
     res.status(200).json({ status: 'ok', data: profile ?? {} });
   } catch (error) {
     console.error('[OficialAPI-Clerky] getProfile error:', error);
@@ -45,7 +52,7 @@ export async function patchProfile(req: Request, res: Response): Promise<void> {
       return;
     }
     const body = req.body as UpdateWhatsAppBusinessProfileBody;
-    await updateWhatsAppBusinessProfile(phoneNumberId, body);
+    await updateWhatsAppBusinessProfile(phoneNumberId, body, accessTokenFromReq(req));
     res.status(200).json({ status: 'ok', message: 'Perfil atualizado' });
   } catch (error) {
     console.error('[OficialAPI-Clerky] patchProfile error:', error);
@@ -66,7 +73,7 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
       res.status(400).json({ status: 'error', message: 'phone_number_id é obrigatório' });
       return;
     }
-    const settings = await getPhoneNumberSettings(phoneNumberId);
+    const settings = await getPhoneNumberSettings(phoneNumberId, accessTokenFromReq(req));
     res.status(200).json({ status: 'ok', data: settings });
   } catch (error) {
     console.error('[OficialAPI-Clerky] getSettings error:', error);
@@ -94,8 +101,9 @@ export async function uploadProfilePicture(req: Request, res: Response): Promise
       return;
     }
     const mime = file.mimetype === 'image/png' ? 'image/png' : 'image/jpeg';
-    const handle = await uploadProfilePictureToMeta(file.buffer, mime, file.originalname || 'profile.jpg');
-    await updateWhatsAppBusinessProfile(phoneNumberId, { profile_picture_handle: handle });
+    const token = accessTokenFromReq(req);
+    const handle = await uploadProfilePictureToMeta(file.buffer, mime, file.originalname || 'profile.jpg', token);
+    await updateWhatsAppBusinessProfile(phoneNumberId, { profile_picture_handle: handle }, token);
     res.status(200).json({ status: 'ok', message: 'Foto do perfil atualizada' });
   } catch (error) {
     console.error('[OficialAPI-Clerky] uploadProfilePicture error:', error);

@@ -9,6 +9,17 @@ import { META_CONFIG } from '../config/constants';
 const BASE_URL = `${META_CONFIG.GRAPH_API_BASE}`;
 const ACCESS_TOKEN = META_CONFIG.ACCESS_TOKEN;
 
+/** Token da instância (header x-meta-access-token) ou META_SYSTEM_USER_TOKEN. */
+function resolveAccessToken(override?: string | null): string {
+  const t = (override && override.trim()) || (ACCESS_TOKEN || '').trim();
+  if (!t) {
+    throw new Error(
+      'Token Meta ausente: configure META_SYSTEM_USER_TOKEN no OficialAPI-Clerky ou envie o header x-meta-access-token (token da instância OnlyFlow).'
+    );
+  }
+  return t;
+}
+
 /**
  * Normaliza número para formato Meta (apenas dígitos, sem + ou @s.whatsapp.net)
  */
@@ -280,12 +291,14 @@ const PROFILE_FIELDS = 'about,address,description,email,profile_picture_url,vert
  * Ref: https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account-to-number-current-status/whatsapp_business_profile/
  */
 export async function getWhatsAppBusinessProfile(
-  phoneNumberId: string
+  phoneNumberId: string,
+  accessTokenOverride?: string | null
 ): Promise<WhatsAppBusinessProfile | null> {
   const url = `${BASE_URL}/${phoneNumberId}/whatsapp_business_profile`;
+  const token = resolveAccessToken(accessTokenOverride);
   const response = await axios.get<{ data?: WhatsAppBusinessProfile[] }>(url, {
     params: {
-      access_token: ACCESS_TOKEN,
+      access_token: token,
       fields: PROFILE_FIELDS,
     },
     timeout: 15000,
@@ -315,15 +328,17 @@ export interface UpdateWhatsAppBusinessProfileBody {
  */
 export async function updateWhatsAppBusinessProfile(
   phoneNumberId: string,
-  body: UpdateWhatsAppBusinessProfileBody
+  body: UpdateWhatsAppBusinessProfileBody,
+  accessTokenOverride?: string | null
 ): Promise<{ success: boolean }> {
   const url = `${BASE_URL}/${phoneNumberId}/whatsapp_business_profile`;
+  const token = resolveAccessToken(accessTokenOverride);
   const payload = {
     messaging_product: 'whatsapp',
     ...body,
   };
   const response = await axios.post<{ success?: boolean }>(url, payload, {
-    params: { access_token: ACCESS_TOKEN },
+    params: { access_token: token },
     headers: { 'Content-Type': 'application/json' },
     timeout: 15000,
   });
@@ -360,12 +375,14 @@ export interface PhoneNumberSettings {
  * GET configurações do número (campos do nó, ex.: messaging_limit_tier)
  */
 export async function getPhoneNumberSettings(
-  phoneNumberId: string
+  phoneNumberId: string,
+  accessTokenOverride?: string | null
 ): Promise<PhoneNumberSettings> {
   const url = `${BASE_URL}/${phoneNumberId}`;
+  const token = resolveAccessToken(accessTokenOverride);
   const response = await axios.get<PhoneNumberSettings>(url, {
     params: {
-      access_token: ACCESS_TOKEN,
+      access_token: token,
       fields: 'id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,throughput',
     },
     timeout: 15000,
@@ -380,10 +397,12 @@ export async function getPhoneNumberSettings(
 export async function uploadProfilePictureToMeta(
   fileBuffer: Buffer,
   mimeType: string,
-  fileName: string
+  fileName: string,
+  accessTokenOverride?: string | null
 ): Promise<string> {
   const appId = META_CONFIG.APP_ID;
   if (!appId) throw new Error('META_APP_ID não configurado');
+  const token = resolveAccessToken(accessTokenOverride);
   const fileType = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
   const urlStart = `${BASE_URL}/${appId}/uploads`;
   const sessionRes = await axios.post<{ id?: string }>(
@@ -391,7 +410,7 @@ export async function uploadProfilePictureToMeta(
     null,
     {
       params: {
-        access_token: ACCESS_TOKEN,
+        access_token: token,
         file_name: fileName || 'profile.jpg',
         file_length: fileBuffer.length,
         file_type: fileType,
@@ -406,7 +425,7 @@ export async function uploadProfilePictureToMeta(
   const urlUpload = `${BASE_URL}/${sessionId}`;
   const uploadRes = await axios.post<{ h?: string }>(urlUpload, fileBuffer, {
     headers: {
-      Authorization: `OAuth ${ACCESS_TOKEN}`,
+      Authorization: `OAuth ${token}`,
       'file_offset': '0',
       'Content-Type': 'application/octet-stream',
     },
