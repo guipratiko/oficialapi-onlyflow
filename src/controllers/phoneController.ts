@@ -21,10 +21,26 @@ function readMetaAccessToken(req: Request): string | undefined {
   return undefined;
 }
 
+/** App ID para resumable upload (/{app-id}/uploads). Opcional se META_APP_ID estiver no .env do OficialAPI. */
+function readMetaAppId(req: Request): string | undefined {
+  const raw = req.headers['x-meta-app-id'];
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (Array.isArray(raw) && raw[0]?.trim()) return raw[0].trim();
+  return undefined;
+}
+
 function logMetaAxiosError(context: string, error: unknown): void {
   if (axios.isAxiosError(error) && error.response?.data) {
     console.error(`[OficialAPI-Clerky] ${context} — resposta Meta:`, JSON.stringify(error.response.data));
   }
+}
+
+/** Repassa status da Graph quando for erro de cliente (ex.: 403 insufficient_scope). */
+function httpStatusFromMetaAxiosError(error: unknown): number {
+  if (!axios.isAxiosError(error)) return 500;
+  const s = error.response?.status;
+  if (s === 400 || s === 401 || s === 403 || s === 404) return s;
+  return 500;
 }
 
 /**
@@ -42,7 +58,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('[OficialAPI-Clerky] getProfile error:', error);
     logMetaAxiosError('getProfile', error);
-    res.status(500).json({
+    res.status(httpStatusFromMetaAxiosError(error)).json({
       status: 'error',
       message: getMetaErrorMessage(error),
     });
@@ -66,7 +82,7 @@ export async function patchProfile(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('[OficialAPI-Clerky] patchProfile error:', error);
     logMetaAxiosError('patchProfile', error);
-    res.status(500).json({
+    res.status(httpStatusFromMetaAxiosError(error)).json({
       status: 'error',
       message: getMetaErrorMessage(error),
     });
@@ -88,7 +104,7 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('[OficialAPI-Clerky] getSettings error:', error);
     logMetaAxiosError('getSettings', error);
-    res.status(500).json({
+    res.status(httpStatusFromMetaAxiosError(error)).json({
       status: 'error',
       message: getMetaErrorMessage(error),
     });
@@ -113,13 +129,19 @@ export async function uploadProfilePicture(req: Request, res: Response): Promise
     }
     const metaToken = readMetaAccessToken(req);
     const mime = file.mimetype === 'image/png' ? 'image/png' : 'image/jpeg';
-    const handle = await uploadProfilePictureToMeta(file.buffer, mime, file.originalname || 'profile.jpg', metaToken);
+    const handle = await uploadProfilePictureToMeta(
+      file.buffer,
+      mime,
+      file.originalname || 'profile.jpg',
+      metaToken,
+      readMetaAppId(req)
+    );
     await updateWhatsAppBusinessProfile(phoneNumberId, { profile_picture_handle: handle }, metaToken);
     res.status(200).json({ status: 'ok', message: 'Foto do perfil atualizada' });
   } catch (error) {
     console.error('[OficialAPI-Clerky] uploadProfilePicture error:', error);
     logMetaAxiosError('uploadProfilePicture', error);
-    res.status(500).json({
+    res.status(httpStatusFromMetaAxiosError(error)).json({
       status: 'error',
       message: getMetaErrorMessage(error),
     });

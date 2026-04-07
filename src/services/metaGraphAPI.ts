@@ -403,10 +403,15 @@ export async function uploadProfilePictureToMeta(
   fileBuffer: Buffer,
   mimeType: string,
   fileName: string,
-  accessToken?: string | null
+  accessToken?: string | null,
+  appIdOverride?: string | null
 ): Promise<string> {
-  const appId = META_CONFIG.APP_ID;
-  if (!appId) throw new Error('META_APP_ID não configurado');
+  const appId = (appIdOverride?.trim() || META_CONFIG.APP_ID || '').trim();
+  if (!appId) {
+    throw new Error(
+      'App ID da Meta ausente para upload (resumable upload exige /{app-id}/uploads). Defina META_APP_ID no OficialAPI-Clerky ou envie o header x-meta-app-id (o Backend pode repassar META_APP_ID).'
+    );
+  }
   const token = getToken(accessToken);
   const fileType = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
   const urlStart = `${BASE_URL}/${appId}/uploads`;
@@ -454,6 +459,10 @@ export function isMetaAPIError(error: unknown): error is AxiosError<MetaErrorBod
 const META_PROFILE_PERMISSION_HINT_PT =
   ' Verifique no Meta Developers: permissão whatsapp_business_management com Advanced Access; System User com papel na WABA (ex.: Admin); token gerado para esse app e com escopos corretos. Tokens só de mensagens (whatsapp_business_messaging) não editam perfil.';
 
+/** Graph devolve 400 invalid_request quando o token não “enxerga” o phone_number_id (WABA errada, ID trocado ou só system token sem vínculo). */
+const META_GRAPH_OBJECT_INACCESSIBLE_HINT_PT =
+  ' O token usado não tem acesso a esse Phone number ID na Graph API. Em business.facebook.com: associe o System User do seu app à mesma WABA desse número (Admin), gere token com whatsapp_business_management, ou conclua o OAuth do Embedded Signup para gravar meta_access_token na instância. Confira se o ID salvo é o Phone number ID da Cloud API (não o WABA ID).';
+
 export function getMetaErrorMessage(error: unknown): string {
   if (!isMetaAPIError(error)) {
     if (error instanceof Error) return error.message;
@@ -466,6 +475,15 @@ export function getMetaErrorMessage(error: unknown): string {
   const msg = errObj?.message || error.message;
   const wwwAuth = res?.headers?.['www-authenticate'];
   const wwwAuthStr = typeof wwwAuth === 'string' ? wwwAuth : Array.isArray(wwwAuth) ? wwwAuth.join(' ') : '';
+
+  const objectInaccessible =
+    wwwAuthStr.includes('invalid_request') &&
+    (/does not exist|Unsupported get request|cannot be loaded due to missing permissions/i.test(msg || '') ||
+      /does not exist|Unsupported get request|missing permissions/i.test(wwwAuthStr));
+
+  if (objectInaccessible) {
+    return (msg || 'Objeto não encontrado ou inacessível na Graph API.') + META_GRAPH_OBJECT_INACCESSIBLE_HINT_PT;
+  }
 
   const insufficientScope =
     wwwAuthStr.includes('insufficient_scope') ||
