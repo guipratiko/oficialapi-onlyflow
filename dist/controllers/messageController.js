@@ -26,7 +26,7 @@ async function sendText(req, res) {
         res.status(200).json({ status: 'ok', data: result });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] sendText error:', error);
+        console.error('[OficialAPI] sendText error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -62,7 +62,7 @@ async function sendMedia(req, res) {
         res.status(200).json({ status: 'ok', data: result });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] sendMedia error:', error);
+        console.error('[OficialAPI] sendMedia error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -87,7 +87,7 @@ async function send(req, res) {
         res.status(200).json({ status: 'ok', data: result });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] send error:', error);
+        console.error('[OficialAPI] send error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -119,7 +119,7 @@ async function sendTemplate(req, res) {
         res.status(200).json({ status: 'ok', data: result });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] sendTemplate error:', error);
+        console.error('[OficialAPI] sendTemplate error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),

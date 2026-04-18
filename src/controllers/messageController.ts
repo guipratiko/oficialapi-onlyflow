@@ -22,7 +22,7 @@ export async function sendText(req: Request, res: Response): Promise<void> {
     const result = await sendTextMessage(phone_number_id, number, String(text));
     res.status(200).json({ status: 'ok', data: result });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] sendText error:', error);
+    console.error('[OficialAPI] sendText error:', error);
     res.status(500).json({
       status: 'error',
       message: getMetaErrorMessage(error),
@@ -58,7 +58,7 @@ export async function sendMedia(req: Request, res: Response): Promise<void> {
     });
     res.status(200).json({ status: 'ok', data: result });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] sendMedia error:', error);
+    console.error('[OficialAPI] sendMedia error:', error);
     res.status(500).json({
       status: 'error',
       message: getMetaErrorMessage(error),
@@ -83,7 +83,7 @@ export async function send(req: Request, res: Response): Promise<void> {
     const result = await sendMessage(phone_number_id, number, rest);
     res.status(200).json({ status: 'ok', data: result });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] send error:', error);
+    console.error('[OficialAPI] send error:', error);
     res.status(500).json({
       status: 'error',
       message: getMetaErrorMessage(error),
@@ -115,7 +115,7 @@ export async function sendTemplate(req: Request, res: Response): Promise<void> {
     });
     res.status(200).json({ status: 'ok', data: result });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] sendTemplate error:', error);
+    console.error('[OficialAPI] sendTemplate error:', error);
     res.status(500).json({
       status: 'error',
       message: getMetaErrorMessage(error),

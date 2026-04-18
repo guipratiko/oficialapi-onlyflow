@@ -25,7 +25,7 @@ export async function list(req: Request, res: Response): Promise<void> {
     const data = await listMessageTemplates(waba_id, access_token);
     res.status(200).json({ status: 'ok', data });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] list templates error:', error);
+    console.error('[OficialAPI] list templates error:', error);
     res.status(500).json({ status: 'error', message: getMetaErrorMessage(error) });
   }
 }
@@ -41,7 +41,7 @@ export async function create(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    console.log('[OficialAPI-Clerky] Template create request', {
+    console.log('[OficialAPI] Template create request', {
       waba_id,
       name: body.name,
       language: body.language,
@@ -49,7 +49,7 @@ export async function create(req: Request, res: Response): Promise<void> {
       componentsCount: body.components?.length ?? 0,
     });
     const result = await createMessageTemplate(waba_id, body, access_token);
-    console.log('[OficialAPI-Clerky] Template create success', {
+    console.log('[OficialAPI] Template create success', {
       templateId: result.id,
       templateStatus: result.templateStatus,
       ...(result.templateStatus?.toUpperCase() === 'REJECTED' && {
@@ -58,7 +58,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     });
     res.status(200).json({ status: 'ok', data: result });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] create template error:', error);
+    console.error('[OficialAPI] create template error:', error);
     res.status(500).json({ status: 'error', message: getMetaErrorMessage(error) });
   }
 }
@@ -75,7 +75,7 @@ export async function getOne(req: Request, res: Response): Promise<void> {
     const data = await getMessageTemplate(id, access_token);
     res.status(200).json({ status: 'ok', data });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] get template error:', error);
+    console.error('[OficialAPI] get template error:', error);
     res.status(500).json({ status: 'error', message: getMetaErrorMessage(error) });
   }
 }
@@ -95,7 +95,7 @@ export async function update(req: Request, res: Response): Promise<void> {
     await updateMessageTemplate(id, body, access_token);
     res.status(200).json({ status: 'ok', data: { success: true } });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] update template error:', error);
+    console.error('[OficialAPI] update template error:', error);
     res.status(500).json({ status: 'error', message: getMetaErrorMessage(error) });
   }
 }
@@ -114,7 +114,7 @@ export async function remove(req: Request, res: Response): Promise<void> {
     await deleteMessageTemplate(waba_id, name, access_token, hsm_id);
     res.status(200).json({ status: 'ok', data: { deleted: true } });
   } catch (error) {
-    console.error('[OficialAPI-Clerky] delete template error:', error);
+    console.error('[OficialAPI] delete template error:', error);
     res.status(500).json({ status: 'error', message: getMetaErrorMessage(error) });
   }
 }

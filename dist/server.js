@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Servidor do microserviço OficialAPI-Clerky (WhatsApp Cloud API)
+ * Servidor do microserviço API oficial WhatsApp Cloud (OnlyFlow)
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -18,12 +18,12 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'oficial-api-clerky', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', service: 'oficial-api-onlyflow', timestamp: new Date().toISOString() });
 });
 app.get('/', (_req, res) => {
     res.json({
         status: 'ok',
-        message: 'OficialAPI-Clerky (WhatsApp Cloud API)',
+        message: 'OnlyFlow — API oficial WhatsApp Cloud',
         version: '1.0.0',
         endpoints: {
             health: '/health',
@@ -35,6 +35,6 @@ app.get('/', (_req, res) => {
 });
 app.use('/api', routes_1.default);
 app.listen(PORT, () => {
-    console.log(`OficialAPI-Clerky rodando na porta ${PORT}`);
+    console.log(`API oficial WhatsApp Cloud (OnlyFlow) rodando na porta ${PORT}`);
     console.log(`API: http://localhost:${PORT}/api`);
 });

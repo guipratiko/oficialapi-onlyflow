@@ -22,7 +22,7 @@ async function getProfile(req, res) {
         res.status(200).json({ status: 'ok', data: profile ?? {} });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] getProfile error:', error);
+        console.error('[OficialAPI] getProfile error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -45,7 +45,7 @@ async function patchProfile(req, res) {
         res.status(200).json({ status: 'ok', message: 'Perfil atualizado' });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] patchProfile error:', error);
+        console.error('[OficialAPI] patchProfile error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -66,7 +66,7 @@ async function getSettings(req, res) {
         res.status(200).json({ status: 'ok', data: settings });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] getSettings error:', error);
+        console.error('[OficialAPI] getSettings error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),
@@ -95,7 +95,7 @@ async function uploadProfilePicture(req, res) {
         res.status(200).json({ status: 'ok', message: 'Foto do perfil atualizada' });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] uploadProfilePicture error:', error);
+        console.error('[OficialAPI] uploadProfilePicture error:', error);
         res.status(500).json({
             status: 'error',
             message: (0, metaGraphAPI_1.getMetaErrorMessage)(error),

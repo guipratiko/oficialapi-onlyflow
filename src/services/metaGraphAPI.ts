@@ -120,14 +120,14 @@ export async function uploadMediaToMeta(
     });
     const id = response.data?.id;
     if (!id) throw new Error('Meta não retornou id do upload de mídia');
-    console.log('[OficialAPI-Clerky] Meta media upload OK', { mediaId: id, type: typeForMeta });
+    console.log('[OficialAPI] Meta media upload OK', { mediaId: id, type: typeForMeta });
     return id;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 400 && err.response?.data) {
       const metaError = err.response.data as { error?: { message?: string; code?: number; error_user_msg?: string } };
       const msg = metaError.error?.message || JSON.stringify(metaError.error);
       const code = metaError.error?.code;
-      console.error('[OficialAPI-Clerky] Meta media upload 400:', { code, message: msg, typeSent: typeForMeta, originalType: mimeType });
+      console.error('[OficialAPI] Meta media upload 400:', { code, message: msg, typeSent: typeForMeta, originalType: mimeType });
       throw new Error(`Meta rejeitou o upload de mídia (${code || '400'}): ${msg}. Use áudio em formato suportado: ${META_AUDIO_OGG}, audio/mp4, audio/mpeg.`);
     }
     throw err;
@@ -169,7 +169,7 @@ export async function sendMediaMessage(
     mediaPayload = { id: mediaId };
   } else if (isUrl) {
     mediaPayload = { link: ensureHttpsLink(media) };
-    console.log('[OficialAPI-Clerky] Enviando mídia por link (MidiaService)', { mediaType, to: toNumber });
+    console.log('[OficialAPI] Enviando mídia por link (MidiaService)', { mediaType, to: toNumber });
   } else {
     mediaPayload = { id: media };
   }
@@ -198,13 +198,13 @@ export async function sendMediaMessage(
     const messages = response.data?.messages;
     const messageId = messages?.[0]?.id || response.data?.message_id || '';
     if (isUrl || (mediaBuffer && mediaBuffer.length > 0)) {
-      console.log('[OficialAPI-Clerky] Mídia enviada à Meta com sucesso', { to: toNumber, messageId });
+      console.log('[OficialAPI] Mídia enviada à Meta com sucesso', { to: toNumber, messageId });
     }
     return { messageId };
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.data) {
       const data = err.response.data as { error?: { message?: string; code?: number } };
-      console.error('[OficialAPI-Clerky] Meta send message error:', {
+      console.error('[OficialAPI] Meta send message error:', {
         status: err.response.status,
         code: data.error?.code,
         message: data.error?.message,
@@ -251,7 +251,7 @@ export async function sendMessage(
   }
   if (payload.audio_base64) {
     const buffer = Buffer.from(payload.audio_base64, 'base64');
-    console.log('[OficialAPI-Clerky] Enviando áudio via base64 (fallback)', { bufferLen: buffer.length, to: number });
+    console.log('[OficialAPI] Enviando áudio via base64 (fallback)', { bufferLen: buffer.length, to: number });
     return sendMediaMessage(
       phoneNumberId,
       number,
@@ -565,7 +565,7 @@ export async function deleteMessageTemplate(
   const token = getToken(accessToken)?.trim() || '';
   if (!token) {
     console.warn('[Meta Templates] DELETE: access_token da instância ou META_SYSTEM_USER_TOKEN é obrigatório.');
-    throw new Error('Envie o token da instância (meta_access_token) ou configure META_SYSTEM_USER_TOKEN no OficialAPI-Clerky.');
+    throw new Error('Envie o token da instância (meta_access_token) ou configure META_SYSTEM_USER_TOKEN no microserviço da API oficial.');
   }
   const tokenSource = accessToken && accessToken.trim() ? 'instance' : 'META_SYSTEM_USER_TOKEN';
   const params: Record<string, string> = { name };

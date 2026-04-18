@@ -1,5 +1,5 @@
 /**
- * Configurações centralizadas do OficialAPI-Clerky
+ * Configurações centralizadas da API oficial WhatsApp Cloud (OnlyFlow)
  */
 
 import dotenv from 'dotenv';

@@ -1,5 +1,5 @@
 /**
- * Servidor do microserviço OficialAPI-Clerky (WhatsApp Cloud API)
+ * Servidor do microserviço API oficial WhatsApp Cloud (OnlyFlow)
  */
 
 import express, { Request, Response } from 'express';
@@ -19,13 +19,13 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'oficial-api-clerky', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'oficial-api-onlyflow', timestamp: new Date().toISOString() });
 });
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    message: 'OficialAPI-Clerky (WhatsApp Cloud API)',
+    message: 'OnlyFlow — API oficial WhatsApp Cloud',
     version: '1.0.0',
     endpoints: {
       health: '/health',
@@ -39,6 +39,6 @@ app.get('/', (_req: Request, res: Response) => {
 app.use('/api', routes);
 
 app.listen(PORT, () => {
-  console.log(`OficialAPI-Clerky rodando na porta ${PORT}`);
+  console.log(`API oficial WhatsApp Cloud (OnlyFlow) rodando na porta ${PORT}`);
   console.log(`API: http://localhost:${PORT}/api`);
 });

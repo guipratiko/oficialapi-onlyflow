@@ -22,7 +22,7 @@ async function list(req, res) {
         res.status(200).json({ status: 'ok', data });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] list templates error:', error);
+        console.error('[OficialAPI] list templates error:', error);
         res.status(500).json({ status: 'error', message: (0, metaGraphAPI_1.getMetaErrorMessage)(error) });
     }
 }
@@ -37,7 +37,7 @@ async function create(req, res) {
             });
             return;
         }
-        console.log('[OficialAPI-Clerky] Template create request', {
+        console.log('[OficialAPI] Template create request', {
             waba_id,
             name: body.name,
             language: body.language,
@@ -45,7 +45,7 @@ async function create(req, res) {
             componentsCount: body.components?.length ?? 0,
         });
         const result = await (0, metaGraphAPI_1.createMessageTemplate)(waba_id, body, access_token);
-        console.log('[OficialAPI-Clerky] Template create success', {
+        console.log('[OficialAPI] Template create success', {
             templateId: result.id,
             templateStatus: result.templateStatus,
             ...(result.templateStatus?.toUpperCase() === 'REJECTED' && {
@@ -55,7 +55,7 @@ async function create(req, res) {
         res.status(200).json({ status: 'ok', data: result });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] create template error:', error);
+        console.error('[OficialAPI] create template error:', error);
         res.status(500).json({ status: 'error', message: (0, metaGraphAPI_1.getMetaErrorMessage)(error) });
     }
 }
@@ -72,7 +72,7 @@ async function getOne(req, res) {
         res.status(200).json({ status: 'ok', data });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] get template error:', error);
+        console.error('[OficialAPI] get template error:', error);
         res.status(500).json({ status: 'error', message: (0, metaGraphAPI_1.getMetaErrorMessage)(error) });
     }
 }
@@ -92,7 +92,7 @@ async function update(req, res) {
         res.status(200).json({ status: 'ok', data: { success: true } });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] update template error:', error);
+        console.error('[OficialAPI] update template error:', error);
         res.status(500).json({ status: 'error', message: (0, metaGraphAPI_1.getMetaErrorMessage)(error) });
     }
 }
@@ -111,7 +111,7 @@ async function remove(req, res) {
         res.status(200).json({ status: 'ok', data: { deleted: true } });
     }
     catch (error) {
-        console.error('[OficialAPI-Clerky] delete template error:', error);
+        console.error('[OficialAPI] delete template error:', error);
         res.status(500).json({ status: 'error', message: (0, metaGraphAPI_1.getMetaErrorMessage)(error) });
     }
 }

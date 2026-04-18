@@ -10,10 +10,6 @@ exports.sendTextMessage = sendTextMessage;
 exports.uploadMediaToMeta = uploadMediaToMeta;
 exports.sendMediaMessage = sendMediaMessage;
 exports.sendMessage = sendMessage;
-exports.getWhatsAppBusinessProfile = getWhatsAppBusinessProfile;
-exports.updateWhatsAppBusinessProfile = updateWhatsAppBusinessProfile;
-exports.getPhoneNumberSettings = getPhoneNumberSettings;
-exports.uploadProfilePictureToMeta = uploadProfilePictureToMeta;
 exports.isMetaAPIError = isMetaAPIError;
 exports.getMetaErrorMessage = getMetaErrorMessage;
 exports.listMessageTemplates = listMessageTemplates;
@@ -25,8 +21,23 @@ exports.sendTemplateMessage = sendTemplateMessage;
 const form_data_1 = __importDefault(require("form-data"));
 const axios_1 = __importDefault(require("axios"));
 const constants_1 = require("../config/constants");
+const metaTemplatePayload_1 = require("./metaTemplatePayload");
 const BASE_URL = `${constants_1.META_CONFIG.GRAPH_API_BASE}`;
 const ACCESS_TOKEN = constants_1.META_CONFIG.ACCESS_TOKEN;
+const PLACEHOLDER_TOKENS = ['SEU_TOKEN_META', 'YOUR_TOKEN', '<ACCESS_TOKEN>', 'EAAJB...'];
+function isPlaceholderToken(t) {
+    const s = t.trim();
+    if (!s)
+        return true;
+    return PLACEHOLDER_TOKENS.some((p) => s === p || s.startsWith(p) || s === 'SEU_TOKEN_META');
+}
+/** Token enviado por requisição (instância OAuth) substitui META_ACCESS_TOKEN do .env */
+function getToken(accessToken) {
+    const t = accessToken?.trim();
+    if (!t || isPlaceholderToken(t))
+        return ACCESS_TOKEN;
+    return t;
+}
 /**
  * Normaliza número para formato Meta (apenas dígitos, sem + ou @s.whatsapp.net)
  */
@@ -108,7 +119,7 @@ async function uploadMediaToMeta(phoneNumberId, fileBuffer, mimeType, fileName) 
         const id = response.data?.id;
         if (!id)
             throw new Error('Meta não retornou id do upload de mídia');
-        console.log('[OficialAPI-Clerky] Meta media upload OK', { mediaId: id, type: typeForMeta });
+        console.log('[OficialAPI] Meta media upload OK', { mediaId: id, type: typeForMeta });
         return id;
     }
     catch (err) {
@@ -116,7 +127,7 @@ async function uploadMediaToMeta(phoneNumberId, fileBuffer, mimeType, fileName) 
             const metaError = err.response.data;
             const msg = metaError.error?.message || JSON.stringify(metaError.error);
             const code = metaError.error?.code;
-            console.error('[OficialAPI-Clerky] Meta media upload 400:', { code, message: msg, typeSent: typeForMeta, originalType: mimeType });
+            console.error('[OficialAPI] Meta media upload 400:', { code, message: msg, typeSent: typeForMeta, originalType: mimeType });
             throw new Error(`Meta rejeitou o upload de mídia (${code || '400'}): ${msg}. Use áudio em formato suportado: ${META_AUDIO_OGG}, audio/mp4, audio/mpeg.`);
         }
         throw err;
@@ -148,7 +159,7 @@ async function sendMediaMessage(phoneNumberId, to, mediaType, media, options, me
     }
     else if (isUrl) {
         mediaPayload = { link: ensureHttpsLink(media) };
-        console.log('[OficialAPI-Clerky] Enviando mídia por link (MidiaService)', { mediaType, to: toNumber });
+        console.log('[OficialAPI] Enviando mídia por link (MidiaService)', { mediaType, to: toNumber });
     }
     else {
         mediaPayload = { id: media };
@@ -175,14 +186,14 @@ async function sendMediaMessage(phoneNumberId, to, mediaType, media, options, me
         const messages = response.data?.messages;
         const messageId = messages?.[0]?.id || response.data?.message_id || '';
         if (isUrl || (mediaBuffer && mediaBuffer.length > 0)) {
-            console.log('[OficialAPI-Clerky] Mídia enviada à Meta com sucesso', { to: toNumber, messageId });
+            console.log('[OficialAPI] Mídia enviada à Meta com sucesso', { to: toNumber, messageId });
         }
         return { messageId };
     }
     catch (err) {
         if (axios_1.default.isAxiosError(err) && err.response?.data) {
             const data = err.response.data;
-            console.error('[OficialAPI-Clerky] Meta send message error:', {
+            console.error('[OficialAPI] Meta send message error:', {
                 status: err.response.status,
                 code: data.error?.code,
                 message: data.error?.message,
@@ -214,7 +225,7 @@ async function sendMessage(phoneNumberId, number, payload) {
     }
     if (payload.audio_base64) {
         const buffer = Buffer.from(payload.audio_base64, 'base64');
-        console.log('[OficialAPI-Clerky] Enviando áudio via base64 (fallback)', { bufferLen: buffer.length, to: number });
+        console.log('[OficialAPI] Enviando áudio via base64 (fallback)', { bufferLen: buffer.length, to: number });
         return sendMediaMessage(phoneNumberId, number, 'audio', payload.audio || '', { fileName: payload.fileName || 'audio.ogg' }, buffer, payload.audio_mimetype);
     }
     if (payload.audio) {
@@ -227,111 +238,42 @@ async function sendMessage(phoneNumberId, number, payload) {
     }
     throw new Error('Tipo de mensagem não especificado');
 }
-const PROFILE_FIELDS = 'about,address,description,email,profile_picture_url,vertical,websites';
-/**
- * GET perfil de negócio do número (WhatsApp Business Profile API).
- * É obrigatório passar fields para a Meta devolver os dados (about, descrição, foto, etc.).
- * Ref: https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account-to-number-current-status/whatsapp_business_profile/
- */
-async function getWhatsAppBusinessProfile(phoneNumberId) {
-    const url = `${BASE_URL}/${phoneNumberId}/whatsapp_business_profile`;
-    const response = await axios_1.default.get(url, {
-        params: {
-            access_token: ACCESS_TOKEN,
-            fields: PROFILE_FIELDS,
-        },
-        timeout: 15000,
-    });
-    const list = response.data?.data;
-    if (Array.isArray(list) && list.length > 0) {
-        return list[0];
-    }
-    return null;
-}
-/**
- * POST atualizar perfil de negócio (WhatsApp Business Profile API)
- */
-async function updateWhatsAppBusinessProfile(phoneNumberId, body) {
-    const url = `${BASE_URL}/${phoneNumberId}/whatsapp_business_profile`;
-    const payload = {
-        messaging_product: 'whatsapp',
-        ...body,
-    };
-    const response = await axios_1.default.post(url, payload, {
-        params: { access_token: ACCESS_TOKEN },
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 15000,
-    });
-    return { success: response.data?.success ?? true };
-}
-/**
- * GET configurações do número (campos do nó, ex.: messaging_limit_tier)
- */
-async function getPhoneNumberSettings(phoneNumberId) {
-    const url = `${BASE_URL}/${phoneNumberId}`;
-    const response = await axios_1.default.get(url, {
-        params: {
-            access_token: ACCESS_TOKEN,
-            fields: 'id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,throughput',
-        },
-        timeout: 15000,
-    });
-    return response.data;
-}
-/**
- * Resumable Upload (Meta): inicia sessão e envia arquivo; retorna o handle para profile_picture_handle.
- * Ref: https://developers.facebook.com/docs/graph-api/guides/upload
- */
-async function uploadProfilePictureToMeta(fileBuffer, mimeType, fileName) {
-    const appId = constants_1.META_CONFIG.APP_ID;
-    if (!appId)
-        throw new Error('META_APP_ID não configurado');
-    const fileType = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
-    const urlStart = `${BASE_URL}/${appId}/uploads`;
-    const sessionRes = await axios_1.default.post(urlStart, null, {
-        params: {
-            access_token: ACCESS_TOKEN,
-            file_name: fileName || 'profile.jpg',
-            file_length: fileBuffer.length,
-            file_type: fileType,
-        },
-        timeout: 15000,
-    });
-    const sessionId = sessionRes.data?.id;
-    if (!sessionId || !sessionId.startsWith('upload:')) {
-        throw new Error('Resposta da Meta sem upload session id');
-    }
-    const urlUpload = `${BASE_URL}/${sessionId}`;
-    const uploadRes = await axios_1.default.post(urlUpload, fileBuffer, {
-        headers: {
-            Authorization: `OAuth ${ACCESS_TOKEN}`,
-            'file_offset': '0',
-            'Content-Type': 'application/octet-stream',
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        timeout: 60000,
-    });
-    const handle = uploadRes.data?.h;
-    if (!handle)
-        throw new Error('Meta não retornou handle do upload');
-    return handle;
-}
 function isMetaAPIError(error) {
     return axios_1.default.isAxiosError(error);
 }
+const META_PROFILE_PERMISSION_HINT_PT = ' Verifique no Meta Developers: permissão whatsapp_business_management com Advanced Access; System User com papel na WABA (ex.: Admin); token gerado para esse app e com escopos corretos. Tokens só de mensagens (whatsapp_business_messaging) não editam perfil.';
+/** Graph devolve 400 invalid_request quando o token não “enxerga” o phone_number_id (WABA errada, ID trocado ou só system token sem vínculo). */
+const META_GRAPH_OBJECT_INACCESSIBLE_HINT_PT = ' O token usado não tem acesso a esse Phone number ID na Graph API. Em business.facebook.com: associe o System User do seu app à mesma WABA desse número (Admin), gere token com whatsapp_business_management, ou conclua o OAuth do Embedded Signup para gravar meta_access_token na instância. Confira se o ID salvo é o Phone number ID da Cloud API (não o WABA ID).';
 function getMetaErrorMessage(error) {
-    if (isMetaAPIError(error) && error.response?.data?.error?.message) {
-        return error.response.data.error.message;
+    if (!isMetaAPIError(error)) {
+        if (error instanceof Error)
+            return error.message;
+        return String(error);
     }
+    const res = error.response;
+    const body = res?.data;
+    const errObj = body?.error;
+    const msg = errObj?.message || error.message;
+    const wwwAuth = res?.headers?.['www-authenticate'];
+    const wwwAuthStr = typeof wwwAuth === 'string' ? wwwAuth : Array.isArray(wwwAuth) ? wwwAuth.join(' ') : '';
+    const objectInaccessible = wwwAuthStr.includes('invalid_request') &&
+        (/does not exist|Unsupported get request|cannot be loaded due to missing permissions/i.test(msg || '') ||
+            /does not exist|Unsupported get request|missing permissions/i.test(wwwAuthStr));
+    if (objectInaccessible) {
+        return (msg || 'Objeto não encontrado ou inacessível na Graph API.') + META_GRAPH_OBJECT_INACCESSIBLE_HINT_PT;
+    }
+    const insufficientScope = wwwAuthStr.includes('insufficient_scope') ||
+        /permission|permissions error|insufficient/i.test(msg || '') ||
+        (errObj?.code === 200 && /permission/i.test(msg || ''));
+    if (insufficientScope) {
+        return (msg || 'Permissão insuficiente na Meta (OAuth).') + META_PROFILE_PERMISSION_HINT_PT;
+    }
+    if (errObj?.message)
+        return errObj.message;
     if (error instanceof Error)
         return error.message;
     return String(error);
 }
-function getToken(accessToken) {
-    return accessToken && accessToken.trim() ? accessToken.trim() : ACCESS_TOKEN;
-}
-const metaTemplatePayload_1 = require("./metaTemplatePayload");
 /** GET lista de templates da WABA. Inclui todos os status (APPROVED, PENDING, REJECTED, DISABLED). */
 async function listMessageTemplates(wabaId, accessToken) {
     const url = `${BASE_URL}/${wabaId}/message_templates`;
@@ -486,10 +428,10 @@ async function updateMessageTemplate(templateId, body, accessToken) {
 /** DELETE template por nome ou por hsm_id+name. Doc Meta: name obrigatório; hsm_id opcional (exclui só aquele ID). */
 async function deleteMessageTemplate(wabaId, name, accessToken, hsmId) {
     const url = `${BASE_URL}/${wabaId}/message_templates`;
-    const token = (accessToken && accessToken.trim()) || (ACCESS_TOKEN || '').trim();
+    const token = getToken(accessToken)?.trim() || '';
     if (!token) {
         console.warn('[Meta Templates] DELETE: access_token da instância ou META_SYSTEM_USER_TOKEN é obrigatório.');
-        throw new Error('Envie o token da instância (meta_access_token) ou configure META_SYSTEM_USER_TOKEN no OficialAPI-Clerky.');
+        throw new Error('Envie o token da instância (meta_access_token) ou configure META_SYSTEM_USER_TOKEN no microserviço da API oficial.');
     }
     const tokenSource = accessToken && accessToken.trim() ? 'instance' : 'META_SYSTEM_USER_TOKEN';
     const params = { name };
