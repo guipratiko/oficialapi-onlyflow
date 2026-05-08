@@ -267,6 +267,36 @@ export async function sendMediaMessage(
   }
 }
 
+/** Extrai payload interativo (botões) mesmo com variações de casing ou sem `type`. */
+function extractInteractiveButtonPayload(payload: Record<string, unknown>): {
+  body: string;
+  buttons: Array<{ id: string; title: string }>;
+} | null {
+  const raw =
+    payload.interactive ??
+    payload.Interactive ??
+    payload['interactive'];
+  if (!raw || typeof raw !== 'object') return null;
+  const i = raw as Record<string, unknown>;
+  const typeNorm = String(i.type ?? '').toLowerCase().trim();
+  const buttons = Array.isArray(i.buttons) ? i.buttons : [];
+  const isButton =
+    typeNorm === 'button' ||
+    buttons.length > 0;
+  if (!isButton) return null;
+  const bodyVal = i.body;
+  const bodyText = typeof bodyVal === 'string' ? bodyVal : '';
+  const normalizedButtons: Array<{ id: string; title: string }> = buttons
+    .filter((b): b is Record<string, unknown> => b != null && typeof b === 'object')
+    .map((b, idx) => ({
+      id: String(b.id ?? `btn_${idx + 1}`),
+      title: String(b.title ?? '').trim(),
+    }))
+    .filter((b) => b.title.length > 0);
+  if (normalizedButtons.length === 0) return null;
+  return { body: bodyText, buttons: normalizedButtons };
+}
+
 /**
  * Wrapper que escolhe sendText ou sendMedia conforme payload (compatível com Evolution)
  */
@@ -290,12 +320,14 @@ export async function sendMessage(
     fileName?: string;
   }
 ): Promise<{ messageId: string }> {
-  if (payload.interactive?.type === 'button') {
+  const asRecord = payload as Record<string, unknown>;
+  const interactiveBtn = extractInteractiveButtonPayload(asRecord);
+  if (interactiveBtn) {
     return sendInteractiveButtonMessage(
       phoneNumberId,
       number,
-      payload.interactive.body || '',
-      Array.isArray(payload.interactive.buttons) ? payload.interactive.buttons : []
+      interactiveBtn.body,
+      interactiveBtn.buttons
     );
   }
   if (payload.text) {
@@ -335,7 +367,11 @@ export async function sendMessage(
       fileName: payload.fileName || 'arquivo',
     });
   }
-  throw new Error('Tipo de mensagem não especificado');
+  const keys = Object.keys(asRecord).join(', ');
+  console.error('[OficialAPI] sendMessage: payload sem tipo reconhecido', { keys });
+  throw new Error(
+    `Tipo de mensagem não especificado (campos: ${keys || 'nenhum'}). Para botões inclua interactive.type=button e interactive.buttons.`
+  );
 }
 
 type MetaErrorBody = {
