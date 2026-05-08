@@ -65,6 +65,58 @@ export async function sendTextMessage(
   return { messageId };
 }
 
+/**
+ * Envia mensagem interativa com botões de resposta (reply buttons)
+ * Ref: https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages#interactive-messages
+ */
+export async function sendInteractiveButtonMessage(
+  phoneNumberId: string,
+  to: string,
+  bodyText: string,
+  buttons: Array<{ id: string; title: string }>
+): Promise<{ messageId: string }> {
+  const url = `${BASE_URL}/${phoneNumberId}/messages`;
+  const normalizedButtons = buttons
+    .map((btn, index) => ({
+      type: 'reply',
+      reply: {
+        id: String(btn.id || `btn_${index + 1}`).slice(0, 256),
+        title: String(btn.title || '').trim().slice(0, 20),
+      },
+    }))
+    .filter((btn) => !!btn.reply.title)
+    .slice(0, 3);
+
+  if (!bodyText?.trim()) {
+    throw new Error('Mensagem interativa requer texto no body');
+  }
+  if (normalizedButtons.length === 0) {
+    throw new Error('Mensagem interativa requer ao menos 1 botão');
+  }
+
+  const body = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizePhoneForMeta(to),
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: bodyText.trim() },
+      action: { buttons: normalizedButtons },
+    },
+  };
+
+  const response = await axios.post(url, body, {
+    params: { access_token: ACCESS_TOKEN },
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 30000,
+  });
+
+  const messages = response.data?.messages;
+  const messageId = messages?.[0]?.id || response.data?.message_id || '';
+  return { messageId };
+}
+
 export type MediaType = 'image' | 'video' | 'audio' | 'document';
 
 const MEDIA_MIME: Record<MediaType, string> = {
@@ -223,6 +275,11 @@ export async function sendMessage(
   number: string,
   payload: {
     text?: string;
+    interactive?: {
+      type?: 'button';
+      body?: string;
+      buttons?: Array<{ id: string; title: string }>;
+    };
     image?: string;
     video?: string;
     audio?: string;
@@ -233,6 +290,14 @@ export async function sendMessage(
     fileName?: string;
   }
 ): Promise<{ messageId: string }> {
+  if (payload.interactive?.type === 'button') {
+    return sendInteractiveButtonMessage(
+      phoneNumberId,
+      number,
+      payload.interactive.body || '',
+      Array.isArray(payload.interactive.buttons) ? payload.interactive.buttons : []
+    );
+  }
   if (payload.text) {
     return sendTextMessage(phoneNumberId, number, payload.text);
   }
