@@ -19,7 +19,12 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'oficial-api-onlyflow', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'oficial-api-onlyflow',
+    buildMarker: 'interactive-send-2026-05-08',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get('/', (_req: Request, res: Response) => {
@@ -41,4 +46,6 @@ app.use('/api', routes);
 app.listen(PORT, () => {
   console.log(`API oficial WhatsApp Cloud (OnlyFlow) rodando na porta ${PORT}`);
   console.log(`API: http://localhost:${PORT}/api`);
+  // Confirme nos logs após deploy: se esta linha não aparecer, o container não está com o dist atual (ex.: CMD só "node dist/server.js" sem build).
+  console.log('[OficialAPI] build-marker: interactive-send-2026-05-08 (POST /api/message/send trata interactive antes de sendMessage)');
 });

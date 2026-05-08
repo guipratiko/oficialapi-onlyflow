@@ -90,7 +90,11 @@ export async function send(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    const interactiveParsed = parseInteractiveReplyButtonsPayload(rest.interactive);
+    const interactiveRaw =
+      rest.interactive ??
+      (rest as Record<string, unknown>).Interactive ??
+      (req.body as Record<string, unknown>)?.interactive;
+    const interactiveParsed = parseInteractiveReplyButtonsPayload(interactiveRaw);
     if (interactiveParsed) {
       const result = await sendInteractiveButtonMessage(
         phone_number_id,
