@@ -267,7 +267,61 @@ export async function sendMediaMessage(
   }
 }
 
-/** Extrai payload interativo (botões) mesmo com variações de casing ou sem `type`. */
+/**
+ * Interpreta o objeto `interactive` no formato da Meta ou no formato simplificado OnlyFlow.
+ * Meta (reply buttons): https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-reply-buttons-messages
+ * - type: "button"
+ * - body: { "text": "..." }  (não string solta)
+ * - action.buttons: [ { type: "reply", reply: { id, title } } ] — aceitamos também lista simplificada { id, title }
+ */
+export function parseInteractiveReplyButtonsPayload(interactive: unknown): {
+  bodyText: string;
+  buttons: Array<{ id: string; title: string }>;
+} | null {
+  if (!interactive || typeof interactive !== 'object') return null;
+  const i = interactive as Record<string, unknown>;
+  const typeNorm = String(i.type ?? '').toLowerCase().trim();
+  let buttons = Array.isArray(i.buttons) ? i.buttons : [];
+  const action = i.action;
+  if (
+    buttons.length === 0 &&
+    action &&
+    typeof action === 'object' &&
+    Array.isArray((action as Record<string, unknown>).buttons)
+  ) {
+    buttons = (action as { buttons: unknown[] }).buttons;
+  }
+  const isButton = typeNorm === 'button' || buttons.length > 0;
+  if (!isButton) return null;
+
+  const bodyVal = i.body;
+  let bodyText = '';
+  if (typeof bodyVal === 'string') {
+    bodyText = bodyVal;
+  } else if (bodyVal && typeof bodyVal === 'object' && 'text' in bodyVal) {
+    bodyText = String((bodyVal as { text?: unknown }).text ?? '');
+  }
+
+  const normalizedButtons: Array<{ id: string; title: string }> = [];
+  for (let idx = 0; idx < buttons.length; idx++) {
+    const b = buttons[idx];
+    if (!b || typeof b !== 'object') continue;
+    const row = b as Record<string, unknown>;
+    let id = String(row.id ?? `btn_${idx + 1}`);
+    let title = String(row.title ?? '').trim();
+    if (row.type === 'reply' && row.reply && typeof row.reply === 'object') {
+      const r = row.reply as Record<string, unknown>;
+      id = String(r.id ?? id);
+      title = String(r.title ?? '').trim();
+    }
+    if (title) normalizedButtons.push({ id, title });
+  }
+
+  if (normalizedButtons.length === 0) return null;
+  return { bodyText, buttons: normalizedButtons.slice(0, 3) };
+}
+
+/** Extrai payload interativo (botões) do body completo do POST /message/send */
 function extractInteractiveButtonPayload(payload: Record<string, unknown>): {
   body: string;
   buttons: Array<{ id: string; title: string }>;
@@ -276,25 +330,9 @@ function extractInteractiveButtonPayload(payload: Record<string, unknown>): {
     payload.interactive ??
     payload.Interactive ??
     payload['interactive'];
-  if (!raw || typeof raw !== 'object') return null;
-  const i = raw as Record<string, unknown>;
-  const typeNorm = String(i.type ?? '').toLowerCase().trim();
-  const buttons = Array.isArray(i.buttons) ? i.buttons : [];
-  const isButton =
-    typeNorm === 'button' ||
-    buttons.length > 0;
-  if (!isButton) return null;
-  const bodyVal = i.body;
-  const bodyText = typeof bodyVal === 'string' ? bodyVal : '';
-  const normalizedButtons: Array<{ id: string; title: string }> = buttons
-    .filter((b): b is Record<string, unknown> => b != null && typeof b === 'object')
-    .map((b, idx) => ({
-      id: String(b.id ?? `btn_${idx + 1}`),
-      title: String(b.title ?? '').trim(),
-    }))
-    .filter((b) => b.title.length > 0);
-  if (normalizedButtons.length === 0) return null;
-  return { body: bodyText, buttons: normalizedButtons };
+  const parsed = parseInteractiveReplyButtonsPayload(raw);
+  if (!parsed) return null;
+  return { body: parsed.bodyText, buttons: parsed.buttons };
 }
 
 /**

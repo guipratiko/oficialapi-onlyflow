@@ -3,7 +3,15 @@
  */
 
 import { Request, Response } from 'express';
-import { sendTextMessage, sendMediaMessage, sendMessage, sendTemplateMessage, getMetaErrorMessage } from '../services/metaGraphAPI';
+import {
+  sendTextMessage,
+  sendMediaMessage,
+  sendMessage,
+  sendTemplateMessage,
+  sendInteractiveButtonMessage,
+  parseInteractiveReplyButtonsPayload,
+  getMetaErrorMessage,
+} from '../services/metaGraphAPI';
 
 /**
  * POST /message/send-text
@@ -68,7 +76,9 @@ export async function sendMedia(req: Request, res: Response): Promise<void> {
 
 /**
  * POST /message/send
- * Body compatível com Evolution: { phone_number_id, number, text?, image?, video?, audio?, document?, caption?, fileName? }
+ * Body compatível com Evolution: { phone_number_id, number, text?, image?, ... }
+ * Mensagem interativa (janela de 24h / customer service): { phone_number_id, number, interactive }
+ * — mesmo formato da Cloud API (body.text + action.buttons) ou simplificado OnlyFlow (body string + buttons[]).
  */
 export async function send(req: Request, res: Response): Promise<void> {
   try {
@@ -78,6 +88,17 @@ export async function send(req: Request, res: Response): Promise<void> {
         status: 'error',
         message: 'phone_number_id e number são obrigatórios',
       });
+      return;
+    }
+    const interactiveParsed = parseInteractiveReplyButtonsPayload(rest.interactive);
+    if (interactiveParsed) {
+      const result = await sendInteractiveButtonMessage(
+        phone_number_id,
+        number,
+        interactiveParsed.bodyText,
+        interactiveParsed.buttons
+      );
+      res.status(200).json({ status: 'ok', data: result });
       return;
     }
     const result = await sendMessage(phone_number_id, number, rest);
